@@ -71,6 +71,4 @@ ribbon:
 feign:
   hystrix:
     enabled: true  #启用hystrix
-frek:
-  carrie:
-    jeremy: boy
+frek: carrie
