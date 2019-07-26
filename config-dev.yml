@@ -1,0 +1,73 @@
+env: dev
+hystrix:
+  threadpool:
+    demo1:
+      coreSize: 2 # 线程池核心线程数，默认10
+      maxQueueSize: 4 # 作业队列的最大值
+      maximumSize: 6 # 线程池中线程的最大数量，默认值是 10，此配置项单独配置时并不会生效，需要启用 allowMaximumSizeToDivergeFromCoreSize 项
+      allowMaximumSizeToDivergeFromCoreSize: true
+      # keepAliveTimeMinutes: 1
+      queueSizeRejectionThreshold: 5
+      # 由于 maxQueueSize 值在线程池被创建后就固定了大小，如果需要动态修改队列长度的话可以设置此值，即使队列未满，
+      # 队列内作业达到此值时同样会拒绝请求。此值默认是 5，所以有时候只设置了 maxQueueSize 也不会起作用。
+
+      # 假设有并发十一个请求（每个请求耗时2S，超时设置3S），则11-2（coreSize）=9，剩余9个请求将进入作业队列，由于作业队列只能
+      # 存放4个（maxQueueSize），并且没有超过5个（queueSizeRejectionThreshold），则剩余5个采用新开线程的方式来处理，但是新线
+      # 程也不是随便开的，因为之前已经有两个coreSize的线程了，所以，这5个里面只有4个（6（maximumSize）-2（coreSize））会得到
+      # 处理，剩余一个将熔断，加上maxQueueSize中的4个也会超时熔断
+
+  command:
+    demo1:  #default全局有效，service id指定应用有效
+      execution:
+        timeout:
+          #是否开启超时熔断
+          enabled: true
+        isolation:
+          thread:
+            timeoutInMilliseconds: 1000 #断路器超时时间，默认1000ms
+          strategy: THREAD
+          semaphore:
+            maxConcurrentRequests: 5 # 这个参数和线程池的核心线程数是同样的意义，允许有多少个请求同时请求资源
+      fallback:
+        isolation:
+          semaphore:
+            maxConcurrentRequests: 2
+            # 信号量最多允许执行fallback的并发数为1，超过则抛异常fallback execution rejected
+            # 这个值如果太小，并发熔断的时候会发生 HystrixRuntimeException: Command fallback execution rejected.
+
+      circuitBreaker:
+        enabled: true
+        # 一个rolling window内最小的请求数，默认20个
+        requestVolumeThreshold: 4
+        # 触发短路的时间值，当该值设为5000时，则当触发 circuit break 后的5000毫秒内都会拒绝request
+        # 也就是5000毫秒后才会关闭circuit。默认5000
+        sleepWindowInMilliseconds: 7000
+        # 错误比率阀值，如果错误率>=该值，circuit会被打开，并短路所有请求触发fallback。默认50
+        errorThresholdPercentage: 50
+
+        # 强制打开熔断器，如果打开这个开关，那么拒绝所有request，默认false
+        forceOpen: false
+        # 强制关闭熔断器 如果这个开关打开，circuit将一直关闭且忽略，默认false
+        forceClosed: false
+
+      metrics:
+        rollingStats:
+          timeInMilliseconds: 16000
+      #          numBuckets: 10
+
+      # 在16秒（timeInMilliseconds）内至少发起4个（requestVolumeThreshold）请求，如果出现50%（errorThresholdPercentage）的
+      # 错误率，则在后面的7秒（sleepWindowInMilliseconds）内直接失败（fallback）而不会发送到后端服务，7秒后，自动切换到半开路
+      # 状态(HALF-OPEN)，这时会判断下一次请求的返回情况, 如果请求成功,断路器切回闭路状态(CLOSED), 否则重新切换到开路状态(OPEN)
+ribbon:
+  # 响应超时
+  ReadTimeout: 500
+  # 连接超时
+  ConnectTimeout: 500
+  #对当前实例的重试次数，默认0
+  # MaxAutoRetries: 1
+  #对切换实例的重试次数，默认1
+  # MaxAutoRetriesNextServer: 2
+
+feign:
+  hystrix:
+    enabled: true  #启用hystrix
