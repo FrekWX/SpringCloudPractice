@@ -24,7 +24,7 @@ hystrix:
           enabled: true
         isolation:
           thread:
-            timeoutInMilliseconds: 1000 #断路器超时时间，默认1000ms
+            timeoutInMilliseconds: 11000 #断路器超时时间，默认1000ms
           strategy: THREAD
           semaphore:
             maxConcurrentRequests: 5 # 这个参数和线程池的核心线程数是同样的意义，允许有多少个请求同时请求资源
